@@ -237,6 +237,15 @@ class SmartIRFan(FanEntity, RestoreEntity):
 
     async def async_oscillate(self, oscillating: bool) -> None:
         """Set oscillation of the fan."""
+        # If the oscillation changed, send the command immediately instead of in send_command()
+        if self._oscillating != oscillating:
+            async with self._temp_lock:
+                command = self._commands['oscillate']
+                try:
+                    await self._controller.send(command)
+                except Exception as e:
+                    _LOGGER.exception(e)
+                    
         self._oscillating = oscillating
 
         await self.send_command()
@@ -272,8 +281,9 @@ class SmartIRFan(FanEntity, RestoreEntity):
 
             if speed.lower() == SPEED_OFF:
                 command = self._commands['off']
-            elif oscillating:
-                command = self._commands['oscillate']
+            # oscillation command is sent in async_oscillate()
+            #elif oscillating:
+            #    command = self._commands['oscillate']
             else:
                 command = self._commands[direction][speed] 
 
